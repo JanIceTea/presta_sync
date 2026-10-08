@@ -63,7 +63,7 @@ actor PrestaShopAPIService {
             "grant_type=client_credentials",
             "client_id=\(credentials.id.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? credentials.id)",
             "client_secret=\(credentials.secret.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? credentials.secret)",
-            "scope=product_read+product_write"
+            "scope=product_read+product_write+blog_post_read+blog_post_write"
         ]
         let body = bodyParts.joined(separator: "&")
         request.httpBody = body.data(using: .utf8)
@@ -194,6 +194,179 @@ actor PrestaShopAPIService {
             "shortDescriptions": shortDescriptions
         ]
         request.httpBody = try JSONSerialization.data(withJSONObject: body)
+
+        let (data, response) = try await session.data(for: request)
+        try validateResponse(response, data: data)
+    }
+
+    // MARK: - Blog Posts
+
+    func fetchBlogPostIds() async throws -> [String] {
+        let base = try baseURL()
+        let url = base.appendingPathComponent("admin-api/blog-posts")
+
+        let token = try await getAccessToken()
+        var request = URLRequest(url: url)
+        request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+        request.setValue("application/json", forHTTPHeaderField: "Accept")
+
+        let (data, response) = try await session.data(for: request)
+        try validateResponse(response, data: data)
+
+        do {
+            let items = try JSONDecoder().decode([PSBlogPostListItem].self, from: data)
+            return items.map(\.id)
+        } catch {
+            let raw = String(data: data, encoding: .utf8) ?? "non-UTF8 data"
+            throw APIError.decodingFailed("Blog post list: \(raw.prefix(500))")
+        }
+    }
+
+    func fetchBlogPost(id: String) async throws -> BlogPost {
+        let base = try baseURL()
+        let url = base.appendingPathComponent("admin-api/blog-posts/\(id)")
+
+        let token = try await getAccessToken()
+        var request = URLRequest(url: url)
+        request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+        request.setValue("application/json", forHTTPHeaderField: "Accept")
+
+        let (data, response) = try await session.data(for: request)
+        try validateResponse(response, data: data)
+
+        do {
+            let psDetail = try JSONDecoder().decode(PSBlogPostDetail.self, from: data)
+            return BlogPost(
+                id: psDetail.id,
+                date: psDetail.date,
+                draft: psDetail.draft,
+                translations: psDetail.translations.mapValues {
+                    BlogTranslation(title: $0.title, summary: $0.summary, content: $0.content)
+                }
+            )
+        } catch {
+            let raw = String(data: data, encoding: .utf8) ?? "non-UTF8 data"
+            throw APIError.decodingFailed("Blog post detail: \(raw.prefix(500))")
+        }
+    }
+
+    func fetchAllBlogPosts() async throws -> [BlogPost] {
+        let ids = try await fetchBlogPostIds()
+        var posts: [BlogPost] = []
+        for id in ids {
+            let post = try await fetchBlogPost(id: id)
+            posts.append(post)
+        }
+        return posts
+    }
+
+    func saveBlogPost(_ post: BlogPost) async throws {
+        let base = try baseURL()
+        let url = base.appendingPathComponent("admin-api/blog-posts/\(post.id)")
+
+        let token = try await getAccessToken()
+        var request = URLRequest(url: url)
+        request.httpMethod = "PUT"
+        request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+
+        let body: [String: Any] = [
+            "id": post.id,
+            "date": post.date,
+            "draft": post.draft,
+            "translations": post.translations.mapValues { translation -> [String: String] in
+                [
+                    "title": translation.title,
+                    "summary": translation.summary,
+                    "content": translation.content
+                ]
+            }
+        ]
+        request.httpBody = try JSONSerialization.data(withJSONObject: body)
+
+        let (data, response) = try await session.data(for: request)
+        try validateResponse(response, data: data)
+    }
+
+    func deleteBlogPost(id: String) async throws {
+        let base = try baseURL()
+        let url = base.appendingPathComponent("admin-api/blog-posts/\(id)")
+
+        let token = try await getAccessToken()
+        var request = URLRequest(url: url)
+        request.httpMethod = "DELETE"
+        request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+
+        let (data, response) = try await session.data(for: request)
+        try validateResponse(response, data: data)
+    }
+
+    // MARK: - Blog Post Images
+
+    func fetchBlogImages(postId: String) async throws -> [BlogImage] {
+        let base = try baseURL()
+        let url = base.appendingPathComponent("admin-api/blog-posts/\(postId)/images")
+
+        let token = try await getAccessToken()
+        var request = URLRequest(url: url)
+        request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+        request.setValue("application/json", forHTTPHeaderField: "Accept")
+
+        let (data, response) = try await session.data(for: request)
+        try validateResponse(response, data: data)
+
+        do {
+            return try JSONDecoder().decode([BlogImage].self, from: data)
+        } catch {
+            let raw = String(data: data, encoding: .utf8) ?? "non-UTF8 data"
+            throw APIError.decodingFailed("Blog images: \(raw.prefix(500))")
+        }
+    }
+
+    func fetchBlogImageData(postId: String, filename: String) async throws -> Data {
+        let base = try baseURL()
+        let url = base.appendingPathComponent("admin-api/blog-posts/\(postId)/images/\(filename)")
+
+        let token = try await getAccessToken()
+        var request = URLRequest(url: url)
+        request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+
+        let (data, response) = try await session.data(for: request)
+        try validateResponse(response, data: data)
+
+        return data
+    }
+
+    func uploadBlogImage(postId: String, filename: String, imageData: Data, contentType: String) async throws -> BlogImage {
+        let base = try baseURL()
+        let url = base.appendingPathComponent("admin-api/blog-posts/\(postId)/images/\(filename)")
+
+        let token = try await getAccessToken()
+        var request = URLRequest(url: url)
+        request.httpMethod = "PUT"
+        request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+        request.setValue(contentType, forHTTPHeaderField: "Content-Type")
+        request.httpBody = imageData
+
+        let (data, response) = try await session.data(for: request)
+        try validateResponse(response, data: data)
+
+        do {
+            return try JSONDecoder().decode(BlogImage.self, from: data)
+        } catch {
+            let raw = String(data: data, encoding: .utf8) ?? "non-UTF8 data"
+            throw APIError.decodingFailed("Blog image upload: \(raw.prefix(500))")
+        }
+    }
+
+    func deleteBlogImage(postId: String, filename: String) async throws {
+        let base = try baseURL()
+        let url = base.appendingPathComponent("admin-api/blog-posts/\(postId)/images/\(filename)")
+
+        let token = try await getAccessToken()
+        var request = URLRequest(url: url)
+        request.httpMethod = "DELETE"
+        request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
 
         let (data, response) = try await session.data(for: request)
         try validateResponse(response, data: data)

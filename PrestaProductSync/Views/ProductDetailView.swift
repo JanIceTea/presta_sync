@@ -138,7 +138,7 @@ struct ProductDetailView: View {
         let panel = NSSavePanel()
         panel.title = "Export Product Details"
         panel.allowedContentTypes = [format.contentType]
-        panel.nameFieldStringValue = "product-\(viewModel.productId).\(format.fileExtension)"
+        panel.nameFieldStringValue = "\(viewModel.productName.sanitizedForFilename()).\(format.fileExtension)"
 
         guard panel.runModal() == .OK, let url = panel.url else { return }
 

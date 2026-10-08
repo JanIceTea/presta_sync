@@ -6,6 +6,10 @@
 	objectVersion = 77;
 	objects = {
 
+/* Begin PBXBuildFile section */
+		4CCE8F723076F2FE00A83357 /* Textual in Frameworks */ = {isa = PBXBuildFile; productRef = 4CCE8F713076F2FE00A83357 /* Textual */; };
+/* End PBXBuildFile section */
+
 /* Begin PBXFileReference section */
 		4C2A0E93306BCB220082471E /* PrestaProductSync.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = PrestaProductSync.app; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
@@ -23,6 +27,7 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				4CCE8F723076F2FE00A83357 /* Textual in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -65,6 +70,7 @@
 			);
 			name = PrestaProductSync;
 			packageProductDependencies = (
+				4CCE8F713076F2FE00A83357 /* Textual */,
 			);
 			productName = PrestaProductSync;
 			productReference = 4C2A0E93306BCB220082471E /* PrestaProductSync.app */;
@@ -94,6 +100,9 @@
 			);
 			mainGroup = 4C2A0E8A306BCB220082471E;
 			minimizedProjectReferenceProxies = 1;
+			packageReferences = (
+				4CCE8F703076F2FE00A83357 /* XCRemoteSwiftPackageReference "textual" */,
+			);
 			preferredProjectObjectVersion = 77;
 			productRefGroup = 4C2A0E94306BCB220082471E /* Products */;
 			projectDirPath = "";
@@ -353,6 +362,25 @@
 			defaultConfigurationName = Release;
 		};
 /* End XCConfigurationList section */
+
+/* Begin XCRemoteSwiftPackageReference section */
+		4CCE8F703076F2FE00A83357 /* XCRemoteSwiftPackageReference "textual" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/gonzalezreal/textual";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 0.5.0;
+			};
+		};
+/* End XCRemoteSwiftPackageReference section */
+
+/* Begin XCSwiftPackageProductDependency section */
+		4CCE8F713076F2FE00A83357 /* Textual */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 4CCE8F703076F2FE00A83357 /* XCRemoteSwiftPackageReference "textual" */;
+			productName = Textual;
+		};
+/* End XCSwiftPackageProductDependency section */
 	};
 	rootObject = 4C2A0E8B306BCB220082471E /* Project object */;
 }

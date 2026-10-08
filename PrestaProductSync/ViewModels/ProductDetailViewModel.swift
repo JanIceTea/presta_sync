@@ -104,6 +104,20 @@ final class ProductDetailViewModel {
     }
 
     func exportMarkdown() -> String {
+        Self.buildMarkdownExport(
+            productId: productId,
+            names: editedNames,
+            descriptions: editedDescriptions,
+            shortDescriptions: editedShortDescriptions
+        )
+    }
+
+    static func buildMarkdownExport(
+        productId: Int,
+        names: [String: String],
+        descriptions: [String: String],
+        shortDescriptions: [String: String]
+    ) -> String {
         var lines: [String] = []
         lines.append("---")
         lines.append("productId: \(productId)")
@@ -119,9 +133,9 @@ final class ProductDetailViewModel {
             }
         }
 
-        appendSection("Names", entries: editedNames)
-        appendSection("Short Descriptions", entries: editedShortDescriptions)
-        appendSection("Descriptions", entries: editedDescriptions)
+        appendSection("Names", entries: names)
+        appendSection("Short Descriptions", entries: shortDescriptions)
+        appendSection("Descriptions", entries: descriptions)
 
         return lines.joined(separator: "\n") + "\n"
     }

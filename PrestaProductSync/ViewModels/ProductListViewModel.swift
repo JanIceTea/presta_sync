@@ -10,8 +10,22 @@ final class ProductListViewModel {
     var isLoading = false
     var errorMessage: String?
     var searchText = ""
+    var lastFetchedAt: Date?
 
     private let apiService = PrestaShopAPIService()
+
+    private static var cacheDirectory: URL {
+        let appSupport = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask).first!
+        return appSupport.appendingPathComponent("PrestaProductSync", isDirectory: true)
+    }
+
+    private static var cacheFileURL: URL {
+        cacheDirectory.appendingPathComponent("products-cache.json")
+    }
+
+    init() {
+        loadFromCache()
+    }
 
     var filteredProducts: [Product] {
         if searchText.isEmpty {
@@ -37,11 +51,41 @@ final class ProductListViewModel {
 
         do {
             products = try await apiService.fetchAllProducts()
+            lastFetchedAt = Date()
+            saveToCache()
         } catch {
             errorMessage = error.localizedDescription
         }
 
         isLoading = false
+    }
+
+    // MARK: - Cache
+
+    private func loadFromCache() {
+        let url = Self.cacheFileURL
+        guard FileManager.default.fileExists(atPath: url.path) else { return }
+
+        do {
+            let data = try Data(contentsOf: url)
+            let cache = try JSONDecoder.withISO8601.decode(ProductCache.self, from: data)
+            products = cache.products
+            lastFetchedAt = cache.fetchedAt
+        } catch {
+            // Cache is corrupt — ignore and let user fetch fresh
+        }
+    }
+
+    private func saveToCache() {
+        let cache = ProductCache(fetchedAt: lastFetchedAt ?? Date(), products: products)
+        do {
+            let dir = Self.cacheDirectory
+            try FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
+            let data = try JSONEncoder.withISO8601.encode(cache)
+            try data.write(to: Self.cacheFileURL, options: .atomic)
+        } catch {
+            // Non-critical — just skip caching
+        }
     }
 
     func removeProduct(id: Int) {
@@ -87,4 +131,22 @@ final class ProductListViewModel {
             errorMessage = "Failed to save file: \(error.localizedDescription)"
         }
     }
+}
+
+// MARK: - JSON Coder helpers
+
+private extension JSONEncoder {
+    static let withISO8601: JSONEncoder = {
+        let encoder = JSONEncoder()
+        encoder.dateEncodingStrategy = .iso8601
+        return encoder
+    }()
+}
+
+private extension JSONDecoder {
+    static let withISO8601: JSONDecoder = {
+        let decoder = JSONDecoder()
+        decoder.dateDecodingStrategy = .iso8601
+        return decoder
+    }()
 }

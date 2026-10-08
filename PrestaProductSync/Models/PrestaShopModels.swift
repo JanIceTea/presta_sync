@@ -74,3 +74,24 @@ struct PSProductDetail: Decodable, Sendable {
     let descriptions: [String: String]?
     let shortDescriptions: [String: String]?
 }
+
+// MARK: - Blog Post List (GET /blog-posts)
+
+struct PSBlogPostListItem: Decodable {
+    let id: String
+}
+
+// MARK: - Blog Post Detail (GET /blog-posts/{id})
+
+struct PSBlogPostDetail: Decodable {
+    let id: String
+    let date: String
+    let draft: Bool
+    let translations: [String: PSBlogTranslation]
+}
+
+struct PSBlogTranslation: Decodable {
+    let title: String
+    let summary: String
+    let content: String
+}
